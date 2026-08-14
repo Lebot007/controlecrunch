@@ -511,6 +511,20 @@ h1 em::after{
 }
 .login-campo input:focus{outline:none;border-color:var(--laranja);box-shadow:0 0 0 3px rgba(255,107,28,.18)}
 .login-campo input::placeholder{color:#4d4856}
+.login-senha-wrap{position:relative}
+.login-senha-wrap input{padding-right:44px}
+.login-ver{
+  position:absolute;top:50%;right:8px;transform:translateY(-50%);
+  width:32px;height:32px;border-radius:8px;
+  display:grid;place-items:center;
+  color:var(--txt-3);background:transparent;border:none;
+  transition:color .2s, background .2s;
+}
+.login-ver:hover{color:var(--laranja-claro);background:rgba(255,107,28,.08)}
+.login-ver svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ic-olho-off{display:none}
+.login-ver.mostrando .ic-olho{display:none}
+.login-ver.mostrando .ic-olho-off{display:block}
 .login-erro{min-height:18px;font-size:12.5px;color:#ff8a8a;margin:2px 0 10px}
 .login-submit{
   width:100%;padding:13px;border-radius:12px;border:none;
