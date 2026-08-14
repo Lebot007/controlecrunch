@@ -7,7 +7,7 @@ const UI = (() => {
   const CHAVE_UI = "tsuki.ui.v1";
 
   let mesAtual = new Date().getMonth();
-  let ultimoFoco = null; // devolve o foco ao fechar o login
+  let ultimoFoco = null;
   const chips = [];
   const el = {};
 
@@ -15,7 +15,7 @@ const UI = (() => {
     "rail", "railPrev", "railNext", "listaPessoas", "listaContagem",
     "resumoMes", "resumoAno", "ringFill", "barFill", "bar",
     "pctNum", "nPagos", "nPendentes", "resumoTexto",
-        "pillResumo", "anoGrande", "toast",
+    "pillResumo", "anoGrande", "toast",
     "btnEntrar", "btnSair", "loginModal", "loginForm",
     "loginEmail", "loginSenha", "loginErro", "loginSubmit", "btnFecharLogin", "btnVerSenha"
   ];
@@ -134,7 +134,6 @@ const UI = (() => {
 
   /* ─────────── alternância de pagamento ─────────── */
   async function alternar(nome, card) {
-    // Visitantes não alteram nada — e o RLS garante isso também no banco
     if (!AuthService.ehAdmin()) {
       avisarBloqueio(card);
       return;
@@ -258,7 +257,6 @@ const UI = (() => {
     );
   }
 
-  /** Re-renderiza tudo com os dados recém-carregados (login/logout). */
   function sincronizar() {
     renderizarCartoes();
     atualizarResumo();
@@ -277,7 +275,7 @@ const UI = (() => {
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && el.loginModal.classList.contains("aberto")) fecharLogin();
     });
-        el.loginForm.addEventListener("submit", enviarLogin);
+    el.loginForm.addEventListener("submit", enviarLogin);
 
     el.btnVerSenha.addEventListener("click", () => {
       const mostrando = el.loginSenha.type === "text";
@@ -287,7 +285,6 @@ const UI = (() => {
       el.btnVerSenha.setAttribute("aria-label", mostrando ? "Mostrar senha" : "Ocultar senha");
       el.loginSenha.focus();
     });
-  }
   }
 
   function abrirLogin() {
