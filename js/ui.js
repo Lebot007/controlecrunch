@@ -15,9 +15,9 @@ const UI = (() => {
     "rail", "railPrev", "railNext", "listaPessoas", "listaContagem",
     "resumoMes", "resumoAno", "ringFill", "barFill", "bar",
     "pctNum", "nPagos", "nPendentes", "resumoTexto",
-    "pillResumo", "anoGrande", "toast",
+        "pillResumo", "anoGrande", "toast",
     "btnEntrar", "btnSair", "loginModal", "loginForm",
-    "loginEmail", "loginSenha", "loginErro", "loginSubmit", "btnFecharLogin"
+    "loginEmail", "loginSenha", "loginErro", "loginSubmit", "btnFecharLogin", "btnVerSenha"
   ];
 
   const ICONE_CHECK =
@@ -277,7 +277,17 @@ const UI = (() => {
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && el.loginModal.classList.contains("aberto")) fecharLogin();
     });
-    el.loginForm.addEventListener("submit", enviarLogin);
+        el.loginForm.addEventListener("submit", enviarLogin);
+
+    el.btnVerSenha.addEventListener("click", () => {
+      const mostrando = el.loginSenha.type === "text";
+      el.loginSenha.type = mostrando ? "password" : "text";
+      el.btnVerSenha.classList.toggle("mostrando", !mostrando);
+      el.btnVerSenha.setAttribute("aria-pressed", String(!mostrando));
+      el.btnVerSenha.setAttribute("aria-label", mostrando ? "Mostrar senha" : "Ocultar senha");
+      el.loginSenha.focus();
+    });
+  }
   }
 
   function abrirLogin() {
