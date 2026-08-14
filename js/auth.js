@@ -39,7 +39,7 @@ const AuthService = (() => {
         usuario = null;
       }
       cliente.auth.onAuthStateChange((evento, sessao) => {
-        if (evento === "INITIAL_SESSION") return; // já tratada acima
+        if (evento === "INITIAL_SESSION") return;
         const novo = sessao?.user ?? null;
         const mudou = (usuario?.id ?? null) !== (novo?.id ?? null);
         usuario = novo;
@@ -48,16 +48,18 @@ const AuthService = (() => {
     },
 
     async entrar(email, senha) {
-      const { error } = await getSupabase().auth.signInWithPassword({ email, senha });
+      const { data, error } = await getSupabase().auth.signInWithPassword({
+        email: email,
+        password: senha
+      });
       if (error) throw error;
-      // o evento SIGNED_IN notifica os ouvintes
+      return data.user;
     },
 
     async sair() {
       if (!clienteOk()) return;
       const { error } = await getSupabase().auth.signOut();
       if (error) throw error;
-      // o evento SIGNED_OUT notifica os ouvintes
     }
   };
 })();
