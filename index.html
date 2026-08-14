@@ -157,9 +157,15 @@
           <span>E-mail</span>
           <input type="email" id="loginEmail" autocomplete="username" placeholder="seu@email.com" required>
         </label>
-        <label class="login-campo">
+                <label class="login-campo">
           <span>Senha</span>
-          <input type="password" id="loginSenha" autocomplete="current-password" placeholder="••••••••" required>
+          <div class="login-senha-wrap">
+            <input type="password" id="loginSenha" autocomplete="off" placeholder="••••••••" required>
+            <button class="login-ver" id="btnVerSenha" type="button" aria-label="Mostrar senha" aria-pressed="false">
+              <svg class="ic-olho" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="ic-olho-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A9.8 9.8 0 0 1 12 5c6.5 0 10 7 10 7a17.4 17.4 0 0 1-3 3.9M6.6 6.6C3.7 8.6 2 12 2 12s3.5 7 10 7c1.9 0 3.6-.5 5-1.3"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>
+            </button>
+          </div>
         </label>
         <p class="login-erro" id="loginErro" role="alert"></p>
         <button class="login-submit" id="loginSubmit" type="submit">Entrar</button>
