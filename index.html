@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TSUKI · Controle de Pagamentos</title>
+  <meta name="description" content="Controle mensal de pagamentos do grupo: quem já pagou a mensalidade de cada mês.">
+  <meta name="theme-color" content="#0a0a0e">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Crect width='44' height='44' rx='10' fill='%230a0a0e'/%3E%3Cpath d='M8 14q14-8 28 0' stroke='%23ff6b1c' stroke-width='3.4' fill='none' stroke-linecap='round'/%3E%3Cpath d='M13 16v17M31 16v17M17 21.5h10' stroke='%23ff6b1c' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/style.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <script src="js/config.js" defer></script>
+  <script src="js/supabase-client.js" defer></script>
+  <script src="js/auth.js" defer></script>
+  <script src="js/storage.js" defer></script>
+  <script src="js/service.js" defer></script>
+  <script src="js/fx.js" defer></script>
+  <script src="js/ui.js" defer></script>
+  <script src="js/app.js" defer></script>
+</head>
+<body class="modo-visitante">
+  <canvas id="fx" aria-hidden="true"></canvas>
+
+  <div class="app">
+    <!-- ══════════ HEADER ══════════ -->
+    <header class="topo">
+      <div class="topo-marca">
+        <svg class="logo" viewBox="0 0 44 44" aria-hidden="true">
+          <path d="M6 13q16-9 32 0" stroke-width="3.6" stroke-linecap="round"/>
+          <path d="M12 16v17M32 16v17" stroke-width="3.2" stroke-linecap="round"/>
+          <path d="M16 21.5h12" stroke-width="3" stroke-linecap="round"/>
+        </svg>
+        <div class="topo-texto">
+          <span class="topo-nome">TSUKI<span class="topo-ping" aria-hidden="true"></span></span>
+          <span class="topo-tag mono">controle de mensalidades</span>
+        </div>
+      </div>
+      <div class="topo-status">
+        <span class="pill mono" id="pillResumo" aria-live="polite">—</span>
+        <button class="btn-entrar" id="btnEntrar" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5.5" y="10.5" width="13" height="9" rx="2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/></svg>
+          Entrar
+        </button>
+        <span class="admin-pill mono">admin</span>
+        <button class="btn-sair mono" id="btnSair" type="button">Sair</button>
+      </div>
+    </header>
+
+    <main class="conteudo">
+      <!-- ══════════ TÍTULO ══════════ -->
+      <section class="titulo-bloco">
+        <div class="titulo-texto">
+          <p class="overline"><span class="pulso" aria-hidden="true"></span>Sistema de mensalidades · Grupo de 5</p>
+          <h1>Controle de <em>pagamentos</em></h1>
+          <p class="subtitulo">Marque quem já pagou a mensalidade de cada mês. Simples, rápido e sempre à mão.</p>
+        </div>
+        <div class="titulo-lado">
+          <span class="ano-grande mono" id="anoGrande">—</span>
+          <div class="slashes" aria-hidden="true"><i></i><i></i><i></i></div>
+        </div>
+      </section>
+
+      <!-- ══════════ SELETOR DE MÊS ══════════ -->
+      <nav class="mes-nav" aria-label="Selecionar mês">
+        <button class="rail-btn" id="railPrev" type="button" aria-label="Meses anteriores">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg>
+        </button>
+        <div class="rail" id="rail" role="tablist" aria-label="Meses do ano"></div>
+        <button class="rail-btn" id="railNext" type="button" aria-label="Meses seguintes">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 6 6 6-6 6"/></svg>
+        </button>
+      </nav>
+
+      <!-- ══════════ RESUMO + LISTA ══════════ -->
+      <div class="painel">
+        <aside class="resumo" aria-label="Resumo do mês selecionado">
+          <header class="resumo-head">
+            <p class="overline">Pagamentos de</p>
+            <h2 class="resumo-mes" id="resumoMes">—</h2>
+            <span class="resumo-ano mono" id="resumoAno"></span>
+          </header>
+
+          <div class="ring-wrap">
+            <svg class="ring" viewBox="0 0 160 160" aria-hidden="true">
+              <defs>
+                <linearGradient id="gradLaranja" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#ffb077"/>
+                  <stop offset="1" stop-color="#ff5a05"/>
+                </linearGradient>
+              </defs>
+              <circle class="ring-track" cx="80" cy="80" r="66"/>
+              <circle class="ring-fill" id="ringFill" cx="80" cy="80" r="66"/>
+            </svg>
+            <div class="ring-centro">
+              <span class="ring-num"><b id="pctNum">0</b><i>%</i></span>
+              <span class="ring-legenda">do mês</span>
+            </div>
+          </div>
+
+          <div class="stats">
+            <div class="stat stat-pagos">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+              <div><b id="nPagos">0</b><span>Pagos</span></div>
+            </div>
+            <div class="stat stat-pendentes">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>
+              <div><b id="nPendentes">5</b><span>Pendentes</span></div>
+            </div>
+          </div>
+
+          <div class="bar" id="bar" role="progressbar" aria-label="Progresso dos pagamentos do mês"
+               aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div class="bar-fill" id="barFill"></div>
+          </div>
+
+          <p class="resumo-texto" id="resumoTexto"></p>
+        </aside>
+
+        <section class="lista" aria-label="Mensalistas do mês">
+          <div class="lista-head">
+            <span class="overline">Mensalistas</span>
+            <span class="mono lista-contagem" id="listaContagem">5 pessoas</span>
+          </div>
+          <div class="lista-grid" id="listaPessoas" role="tabpanel" aria-label="Status de pagamento"></div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="rodape mono">
+      <span>TSUKI — controle de mensalidades</span>
+      <span>visitantes visualizam · apenas o admin altera</span>
+    </footer>
+  </div>
+
+  <!-- ══════════ LOGIN ══════════ -->
+  <div class="login-overlay" id="loginModal" role="dialog" aria-modal="true" aria-labelledby="loginTitulo">
+    <div class="login-card">
+      <button class="login-fechar" id="btnFecharLogin" type="button" aria-label="Fechar login">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>
+      </button>
+      <svg class="logo login-logo" viewBox="0 0 44 44" aria-hidden="true">
+        <path d="M6 13q16-9 32 0" stroke-width="3.6" stroke-linecap="round"/>
+        <path d="M12 16v17M32 16v17" stroke-width="3.2" stroke-linecap="round"/>
+        <path d="M16 21.5h12" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+      <h2 class="login-titulo" id="loginTitulo">Área do <em>administrador</em></h2>
+      <p class="login-sub">Entre com sua conta para gerenciar os pagamentos do mês.</p>
+
+      <form id="loginForm" novalidate>
+        <label class="login-campo">
+          <span>E-mail</span>
+          <input type="email" id="loginEmail" autocomplete="username" placeholder="seu@email.com" required>
+        </label>
+        <label class="login-campo">
+          <span>Senha</span>
+          <input type="password" id="loginSenha" autocomplete="current-password" placeholder="••••••••" required>
+        </label>
+        <p class="login-erro" id="loginErro" role="alert"></p>
+        <button class="login-submit" id="loginSubmit" type="submit">Entrar</button>
+      </form>
+
+      <p class="login-nota mono">acesso restrito · visitantes podem apenas visualizar</p>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <noscript>
+    <p style="padding:20px;text-align:center;font-family:sans-serif;color:#fff;background:#0a0a0e">
+      Este aplicativo precisa de JavaScript habilitado para funcionar.
+    </p>
+  </noscript>
+</body>
+</html>
