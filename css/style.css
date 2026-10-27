@@ -66,8 +66,8 @@ body::after{
 .app{
   position:relative;z-index:1;
   display:flex;flex-direction:column;min-height:100vh;
-  opacity:0;transform:translateY(10px);
-  transition:opacity .6s ease, transform .6s ease;
+  opacity:0;transform:translateY(8px);
+  transition:opacity .34s ease, transform .34s ease;
 }
 body.pronto .app{opacity:1;transform:none}
 
@@ -118,6 +118,15 @@ body.pronto .app{opacity:1;transform:none}
   color:var(--txt-2);background:var(--surface);
 }
 .pill b{color:var(--laranja-vivo);font-weight:600}
+.pill-dot{
+  display:inline-block;width:7px;height:7px;border-radius:50%;
+  background:var(--txt-3);margin-right:8px;vertical-align:middle;
+}
+.pill-dot.sync{background:var(--laranja-vivo);animation:pulsar 1.5s ease-out infinite}
+.pill-dot.off{background:#8a6a45}
+.pill.is-sync{border-color:rgba(255,107,28,.32)}
+.pill.is-off{border-color:rgba(255,176,119,.26);color:var(--txt-3)}
+.pill.is-off b{color:var(--txt-2)}
 
 /* Autenticação no header */
 .btn-entrar{
@@ -318,8 +327,8 @@ h1 em::after{
   border:1px solid var(--line);
   cursor:pointer;user-select:none;
   transition:transform .3s cubic-bezier(.2,.8,.2,1), border-color .3s, box-shadow .3s, background .3s;
-  animation:entrar .5s cubic-bezier(.2,.8,.2,1) backwards;
-  animation-delay:calc(var(--i,0)*70ms);
+  animation:entrar .38s cubic-bezier(.2,.8,.2,1) backwards;
+  animation-delay:calc(var(--i,0)*45ms);
 }
 @keyframes entrar{from{opacity:0;transform:translateY(18px) scale(.98)}to{opacity:1;transform:none}}
 .pessoa::before{
@@ -355,7 +364,7 @@ h1 em::after{
 .pessoa.is-vaga:hover,.pessoa.is-vaga:active{transform:none;border-color:rgba(255,255,255,.12);box-shadow:none}
 .pessoa.is-vaga .pessoa-info h3{color:var(--txt-2);letter-spacing:.16em}
 .pessoa.is-vaga .pessoa-status{color:var(--txt-3)}
-.pessoa.is-vaga .pessoa-avatar{
+.pessoa.is-vaga .pessoa-avatar.av-vaga{
   border-style:dashed;border-color:rgba(255,255,255,.14);
   background:repeating-linear-gradient(135deg,#1a1a22 0 6px,#141419 6px 12px);
 }
@@ -367,8 +376,46 @@ h1 em::after{
   border:1px dashed rgba(255,255,255,.16);background:rgba(255,255,255,.02);
   font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--txt-3);
 }
+.pessoa.skeleton{
+  cursor:default;pointer-events:none;
+  border-style:dashed;background:rgba(255,255,255,.02);box-shadow:none;
+}
+.pessoa.skeleton::before{display:none}
+.pessoa.skeleton:hover{transform:none;border-color:var(--line);box-shadow:none}
+.pessoa.skeleton .sk{
+  display:block;border-radius:8px;
+  background:linear-gradient(90deg,rgba(255,255,255,.05) 0%,rgba(255,255,255,.13) 50%,rgba(255,255,255,.05) 100%);
+  background-size:200% 100%;
+  animation:brilho 1.5s linear infinite;
+}
+.pessoa.skeleton .sk-avatar{width:52px;height:52px;flex-shrink:0;border-radius:14px}
+.pessoa.skeleton .sk-linha{height:13px;width:62%;margin-bottom:9px}
+.pessoa.skeleton .sk-linha.curta{height:10px;width:38%;margin-bottom:0}
+.pessoa.skeleton .sk-switch{width:58px;height:32px;flex-shrink:0;border-radius:99px}
+
+/* Falha total de carga (sem cache e sem servidor) */
+.falha-carga{
+  grid-column:1/-1;
+  display:flex;flex-direction:column;align-items:center;gap:12px;
+  padding:34px 22px;text-align:center;
+  border:1px dashed var(--line-2);border-radius:var(--raio);
+  background:rgba(255,255,255,.02);
+}
+.falha-carga svg{width:30px;height:30px;fill:none;stroke:var(--laranja-claro);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.falha-carga p{font-size:13.5px;color:var(--txt-2);max-width:52ch;line-height:1.6}
+.falha-carga strong{color:var(--txt);font-weight:600;display:block;margin-bottom:4px}
+.btn-recarregar{
+  padding:9px 18px;border-radius:99px;
+  border:1px solid rgba(255,107,28,.45);background:var(--laranja-suave);
+  color:var(--laranja-claro);font-size:10px;letter-spacing:.18em;text-transform:uppercase;
+  transition:background .25s,border-color .25s,transform .25s;
+}
+.btn-recarregar:hover{background:rgba(255,107,28,.2);border-color:var(--laranja);transform:translateY(-1px)}
+
 @media (prefers-reduced-motion:reduce){
   .pessoa.is-vaga{animation:none}
+  .pessoa.skeleton .sk{animation:none}
+  .pill-dot.sync{animation:none}
 }
 
 .pessoa-num{

@@ -8,8 +8,18 @@ const UI = (() => {
 
   let mesAtual = new Date().getMonth();
   let ultimoFoco = null;
+  let estadoRede = "ocioso";       // ocioso | sincronizando | online | offline | erro
+  let assinaturaAtual = null;      // evita re-renderizar (e re-animar) sem mudança
+  let avisoOfflineDado = false;
   const chips = [];
   const el = {};
+
+  const TITULOS_REDE = {
+    sincronizando: "Sincronizando com o servidor…",
+    online: "Dados sincronizados com o servidor",
+    offline: "Sem conexão agora: exibindo o último estado salvo neste navegador",
+    erro: "Não foi possível carregar do servidor. Tente recarregar a página."
+  };
 
   const REF_IDS = [
     "rail", "railPrev", "railNext", "listaPessoas", "listaContagem",
@@ -39,7 +49,74 @@ const UI = (() => {
     selecionarMes(mesAtual, { primeiraVez: true });
     ligarEventosGlobais();
     ligarEventosAutenticacao();
+    definirEstadoRede(estadoRede);
   }
+
+  /* ─────────── estado da rede (sincronização) ─────────── */
+  function definirEstadoRede(estado) {
+    estadoRede = estado;
+    if (!el.pillResumo) return; // UI ainda não iniciou: só guarda o estado
+
+    el.pillResumo.classList.toggle("is-sync", estado === "sincronizando");
+    el.pillResumo.classList.toggle("is-off", estado === "offline" || estado === "erro");
+    el.pillResumo.title = TITULOS_REDE[estado] || "";
+
+    if ((estado === "offline" || estado === "erro") && !avisoOfflineDado) {
+      avisoOfflineDado = true;
+      mostrarToast(estado === "erro"
+        ? "Sem resposta do servidor. Mostrando a última informação salva."
+        : "Sem conexão: mostrando o último estado salvo.");
+    }
+    if (estado === "online") avisoOfflineDado = false;
+
+    // Primeira visita, ainda sem nada para mostrar: esqueleto no lugar da lista.
+    if (estado === "sincronizando" && !PaymentService.carregado()) renderizarEsqueleto(true);
+    if (estado === "erro" && !PaymentService.carregado()) renderizarFalha();
+
+    atualizarPill();
+  }
+
+  /** Cartões placeholder enquanto a primeira consulta não volta. */
+  function renderizarEsqueleto(forcar = false) {
+    if (!el.listaPessoas) return;
+    if (!forcar && el.listaPessoas.childElementCount) return;
+    const frag = document.createDocumentFragment();
+    pessoas.forEach((_, i) => {
+      const card = document.createElement("article");
+      card.className = "pessoa skeleton";
+      card.setAttribute("aria-hidden", "true");
+      card.style.setProperty("--i", i);
+      card.innerHTML = `
+        <span class="sk sk-avatar"></span>
+        <span class="pessoa-info"><span class="sk sk-linha"></span><span class="sk sk-linha curta"></span></span>
+        <span class="sk sk-switch"></span>`;
+      frag.appendChild(card);
+    });
+    el.listaPessoas.replaceChildren(frag);
+    el.listaContagem.textContent = "carregando…";
+    assinaturaAtual = null; // força a renderização real quando os dados chegarem
+  }
+
+  /** Última alternativa: sem cache e sem servidor, avisa em vez de mentir. */
+  function renderizarFalha() {
+    if (!el.listaPessoas) return;
+    const box = document.createElement("div");
+    box.className = "falha-carga";
+    box.setAttribute("role", "status");
+    box.innerHTML = `
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 3.9 2.6 17.4a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4.2"/><circle cx="12" cy="16.6" r=".9"/></svg>
+      <p><strong>Não foi possível carregar os pagamentos.</strong>
+         Confira sua conexão. Se o site ficou muito tempo sem visitas, o projeto
+         Supabase pode estar pausado por inatividade — basta retomá-lo no painel
+         (o keep-alive do repositório evita isso).</p>
+      <button class="btn-recarregar mono" type="button">Tentar novamente</button>`;
+    box.querySelector(".btn-recarregar").addEventListener("click", () => location.reload());
+    el.listaPessoas.replaceChildren(box);
+    el.listaContagem.textContent = "sem dados";
+    assinaturaAtual = null;
+  }
+
+  const assinaturaAtualDe = () => `${mesAtual}|${PaymentService.assinatura()}`;
 
   /* ─────────── meses ─────────── */
   function construirChips() {
@@ -93,6 +170,11 @@ const UI = (() => {
 
   /* ─────────── cartões ─────────── */
   function renderizarCartoes() {
+    // Ainda não chegou nada (nem cache, nem servidor): mostra o esqueleto.
+    if (!PaymentService.carregado()) {
+      renderizarEsqueleto(true);
+      return;
+    }
     const admin = AuthService.ehAdmin();
     const frag = document.createDocumentFragment();
 
@@ -148,6 +230,7 @@ const UI = (() => {
 
     el.listaPessoas.replaceChildren(frag);
     el.listaContagem.textContent = `${ativos.length} pessoas · ${meses[mesAtual]}`;
+    assinaturaAtual = assinaturaAtualDe();
   }
 
   const rotuloSwitch = (nome, pago) =>
@@ -269,8 +352,13 @@ const UI = (() => {
 
   function atualizarPill() {
     const pagos = PaymentService.contagemPagos(mesAtual);
+    const selo = estadoRede === "sincronizando"
+      ? '<i class="pill-dot sync" aria-hidden="true"></i>'
+      : (estadoRede === "offline" || estadoRede === "erro")
+        ? '<i class="pill-dot off" aria-hidden="true"></i>'
+        : "";
     el.pillResumo.innerHTML =
-      `${mesesCurtos[mesAtual]} · <b>${pagos}/${ativos.length}</b> pagos`;
+      `${selo}${mesesCurtos[mesAtual]} · <b>${pagos}/${ativos.length}</b> pagos`;
   }
 
   /* ─────────── modo admin / visitante ─────────── */
@@ -283,7 +371,8 @@ const UI = (() => {
   }
 
   function sincronizar() {
-    renderizarCartoes();
+    if (!el.listaPessoas) return;
+    if (assinaturaAtualDe() !== assinaturaAtual) renderizarCartoes();
     atualizarResumo();
     atualizarDots();
     atualizarPill();
@@ -433,5 +522,5 @@ const UI = (() => {
     el.railNext.disabled = !rola || el.rail.scrollLeft + el.rail.clientWidth >= el.rail.scrollWidth - 4;
   }
 
-  return { iniciar, definirModoAdmin, sincronizar };
+  return { iniciar, definirModoAdmin, definirEstadoRede, sincronizar };
 })();

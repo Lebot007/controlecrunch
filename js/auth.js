@@ -6,11 +6,9 @@
 const AuthService = (() => {
   const ADMIN_UID = "ebc303c9-2dde-4d65-8200-9fe87901eacd";
   let usuario = null;
+  let inicializacao = null; // promise única: inicializar() é idempotente
   const ouvintes = [];
 
-  function clienteOk() {
-    try { getSupabase(); return true; } catch { return false; }
-  }
   function ehAdmin() {
     return !!usuario && usuario.id === ADMIN_UID;
   }
@@ -24,31 +22,46 @@ const AuthService = (() => {
   return {
     aoMudar(cb) { ouvintes.push(cb); },
     ehAdmin,
-    disponivel: clienteOk,
+    /** Basta o Supabase estar configurado: o SDK pode ainda estar baixando. */
+    disponivel: () => supabaseConfigurado(),
     usuarioAtual: () => usuario,
 
     /** Restaura a sessão existente e observa mudanças de autenticação. */
-    async inicializar() {
-      if (!clienteOk()) return;
-      const cliente = getSupabase();
-      try {
-        const { data } = await cliente.auth.getSession();
-        usuario = data?.session?.user ?? null;
-      } catch (erro) {
-        console.warn("TSUKI: não foi possível restaurar a sessão.", erro);
-        usuario = null;
+    inicializar() {
+      if (!supabaseConfigurado()) return Promise.resolve();
+      if (!inicializacao) {
+        inicializacao = (async () => {
+          let cliente;
+          try {
+            cliente = await supabaseAsync();
+          } catch (erro) {
+            console.warn("TSUKI: SDK do Supabase indisponível; modo visitante.", erro);
+            inicializacao = null; // permite tentar de novo depois
+            return;
+          }
+          try {
+            // getSession() lê do armazenamento local (sem ida à rede),
+            // então reconhecer o admin não atrasa a primeira pintura.
+            const { data } = await cliente.auth.getSession();
+            usuario = data?.session?.user ?? null;
+          } catch (erro) {
+            console.warn("TSUKI: não foi possível restaurar a sessão.", erro);
+            usuario = null;
+          }
+          cliente.auth.onAuthStateChange((evento, sessao) => {
+            if (evento === "INITIAL_SESSION") return;
+            const novo = sessao?.user ?? null;
+            const mudou = (usuario?.id ?? null) !== (novo?.id ?? null);
+            usuario = novo;
+            if (mudou) notificar();
+          });
+        })();
       }
-      cliente.auth.onAuthStateChange((evento, sessao) => {
-        if (evento === "INITIAL_SESSION") return;
-        const novo = sessao?.user ?? null;
-        const mudou = (usuario?.id ?? null) !== (novo?.id ?? null);
-        usuario = novo;
-        if (mudou) notificar();
-      });
+      return inicializacao;
     },
 
     async entrar(email, senha) {
-      const { data, error } = await getSupabase().auth.signInWithPassword({
+      const { data, error } = await (await supabaseAsync()).auth.signInWithPassword({
         email: email,
         password: senha
       });
@@ -57,8 +70,8 @@ const AuthService = (() => {
     },
 
     async sair() {
-      if (!clienteOk()) return;
-      const { error } = await getSupabase().auth.signOut();
+      if (!supabaseConfigurado()) return;
+      const { error } = await (await supabaseAsync()).auth.signOut();
       if (error) throw error;
     }
   };

@@ -8,13 +8,38 @@
   <meta name="theme-color" content="#0a0a0e">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'%3E%3Crect width='44' height='44' rx='10' fill='%230a0a0e'/%3E%3Cpath d='M8 14q14-8 28 0' stroke='%23ff6b1c' stroke-width='3.4' fill='none' stroke-linecap='round'/%3E%3Cpath d='M13 16v17M31 16v17M17 21.5h10' stroke='%23ff6b1c' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
 
+  <!-- ── Desempenho: conexões antecipadas (economiza DNS + TLS na 1ª carga) ── -->
+  <link rel="preconnect" href="https://nxkolopzwtbtnfbryfut.supabase.co" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Fontes sem bloquear a pintura (o CSS já tem fallbacks + display=swap) -->
+  <link rel="preload" as="style" onload="this.onload=null;this.rel='stylesheet'"
+        href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@400;600&family=Outfit:wght@300;400;500;600;700&display=swap">
 
   <link rel="stylesheet" href="css/style.css">
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" defer></script>
+  <style>
+    /* Pintura imediata: fundo correto + aviso de boot antes de qualquer JS. */
+    html,body{background:#0a0a0e}
+    #boot{
+      position:fixed;inset:0;z-index:90;display:grid;place-items:center;
+      font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+      font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:#6f6a7a;
+    }
+    #boot span{animation:bootPulso 1.15s ease-in-out infinite}
+    @keyframes bootPulso{0%,100%{opacity:.3}50%{opacity:1}}
+    body.pronto #boot{display:none}
+  </style>
+
+  <!--
+    SDK do Supabase em `async` (não trava mais o DOMContentLoaded) e com a
+    versão fixada (cache longo e comportamento previsível). A leitura inicial
+    dos dados é feita por fetch direto no PostgREST, sem esperar este arquivo.
+  -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.js"
+          crossorigin="anonymous" async></script>
   <script src="js/config.js" defer></script>
   <script src="js/supabase-client.js" defer></script>
   <script src="js/auth.js" defer></script>
@@ -25,6 +50,7 @@
   <script src="js/app.js" defer></script>
 </head>
 <body class="modo-visitante">
+  <div id="boot" aria-hidden="true"><span>carregando…</span></div>
   <canvas id="fx" aria-hidden="true"></canvas>
 
   <div class="app">
@@ -178,6 +204,7 @@
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <noscript>
+    <style>#boot{display:none!important}</style>
     <p style="padding:20px;text-align:center;font-family:sans-serif;color:#fff;background:#0a0a0e">
       Este aplicativo precisa de JavaScript habilitado para funcionar.
     </p>
