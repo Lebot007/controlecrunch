@@ -342,6 +342,35 @@ h1 em::after{
 .pessoa.flash{animation:flashCard .6s ease}
 @keyframes flashCard{0%{box-shadow:0 0 0 0 var(--laranja-glow)}100%{box-shadow:0 0 0 18px transparent}}
 
+/* ── Vaga sem pessoa (cartão inativo: não conta e não é clicável) ── */
+.pessoa.is-vaga{
+  cursor:default;opacity:.55;
+  border-style:dashed;border-color:rgba(255,255,255,.12);
+  background:linear-gradient(180deg,rgba(255,255,255,.025),rgba(255,255,255,.008));
+  box-shadow:none;
+  animation-name:entrarVaga;
+}
+@keyframes entrarVaga{from{opacity:0;transform:translateY(18px) scale(.98)}to{opacity:.55;transform:none}}
+.pessoa.is-vaga::before{background:rgba(255,255,255,.09);box-shadow:none}
+.pessoa.is-vaga:hover,.pessoa.is-vaga:active{transform:none;border-color:rgba(255,255,255,.12);box-shadow:none}
+.pessoa.is-vaga .pessoa-info h3{color:var(--txt-2);letter-spacing:.16em}
+.pessoa.is-vaga .pessoa-status{color:var(--txt-3)}
+.pessoa.is-vaga .pessoa-avatar{
+  border-style:dashed;border-color:rgba(255,255,255,.14);
+  background:repeating-linear-gradient(135deg,#1a1a22 0 6px,#141419 6px 12px);
+}
+.av-vaga svg{width:24px;height:24px;fill:none;stroke:var(--txt-3);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.ic-vaga{stroke:var(--txt-3);fill:none}
+.vaga-selo{
+  width:58px;height:32px;flex-shrink:0;border-radius:99px;
+  display:grid;place-items:center;
+  border:1px dashed rgba(255,255,255,.16);background:rgba(255,255,255,.02);
+  font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--txt-3);
+}
+@media (prefers-reduced-motion:reduce){
+  .pessoa.is-vaga{animation:none}
+}
+
 .pessoa-num{
   position:absolute;top:10px;right:12px;
   font-family:var(--fonte-mono);font-size:10px;letter-spacing:.18em;

@@ -7,15 +7,20 @@
  *  - LocalStorageAdapter: reserva automática caso o Supabase ainda
  *    não esteja configurado (o site continua funcional).
  *  A aplicação continua usando apenas carregar() e salvar().
+ *
+ *  Nomes legados (Pedro/Lucas) são convertidos na leitura — veja
+ *  NOMES_LEGADOS em js/config.js. Vagas sem pessoa nunca são gravadas.
  * ─────────────────────────────────────────────────────────────
  */
 
-/** Validação comum aos dois adapters. */
+/** Validação comum aos dois adapters (aceita nomes legados já convertidos). */
 function registroValido(r) {
-  return r && typeof r.pessoa === "string" &&
-    APP_CONFIG.pessoas.includes(r.pessoa) &&
-    Number.isInteger(r.mes) && r.mes >= 0 && r.mes <= 11 &&
-    Number.isInteger(r.ano) && r.pago === true;
+  if (!r) return false;
+  if (!Number.isInteger(r.mes) || r.mes < 0 || r.mes > 11) return false;
+  if (!Number.isInteger(r.ano)) return false;
+  if (r.pago !== true) return false;
+  const nome = nomeAtual(r.pessoa);
+  return nome !== null && !ehVaga(nome);
 }
 
 const LocalStorageAdapter = (() => {
@@ -28,7 +33,9 @@ const LocalStorageAdapter = (() => {
       if (!bruto) return [];
       const dados = JSON.parse(bruto);
       const lista = Array.isArray(dados.pagamentos) ? dados.pagamentos : [];
-      return lista.filter(registroValido);
+      return lista
+        .filter(registroValido)
+        .map((r) => ({ pessoa: nomeAtual(r.pessoa), mes: r.mes, ano: r.ano, pago: true }));
     } catch (erro) {
       console.warn("TSUKI: armazenamento local ilegível, iniciando vazio.", erro);
       return [];
@@ -57,8 +64,13 @@ const LocalStorageAdapter = (() => {
 
 const SupabaseAdapter = (() => {
   const TABELA = "pagamentos";
+  /** Cache espelha o banco: pessoa = nome atual; pessoaOriginal = nome gravado. */
   let cache = [];
   const chave = (r) => `${r.pessoa}|${r.mes}|${r.ano}`;
+
+  /** Remove campos internos antes de entregar os dados para a aplicação. */
+  const paraApp = (lista) =>
+    lista.map(({ pessoa, mes, ano, pago }) => ({ pessoa, mes, ano, pago }));
 
   return {
     async carregar() {
@@ -66,32 +78,57 @@ const SupabaseAdapter = (() => {
         .from(TABELA)
         .select("pessoa, mes, ano, pago");
       if (error) throw error;
-      cache = (data ?? [])
-        .filter(registroValido)
-        .map((r) => ({ pessoa: r.pessoa, mes: r.mes, ano: r.ano, pago: true }));
-      return [...cache];
+
+      const vistos = new Set();
+      const normalizados = [];
+      for (const bruto of (data ?? [])) {
+        if (!registroValido(bruto)) continue;
+        const registro = {
+          pessoa: nomeAtual(bruto.pessoa),
+          pessoaOriginal: bruto.pessoa,
+          mes: bruto.mes,
+          ano: bruto.ano,
+          pago: true
+        };
+        const id = chave(registro);
+        if (vistos.has(id)) continue; // nome antigo + novo no mesmo mês: mantém um só
+        vistos.add(id);
+        normalizados.push(registro);
+      }
+      cache = normalizados;
+      return paraApp(cache);
     },
 
     /** Aplica apenas a diferença (1 insert OU 1 delete por alternância). */
     async salvar(pagamentos) {
       const cliente = getSupabase();
-      const novas = new Set(pagamentos.map(chave));
+      const uteis = pagamentos.filter((r) => !ehVaga(r.pessoa)); // vaga nunca vai ao banco
+      const novas = new Set(uteis.map(chave));
       const antigas = new Set(cache.map(chave));
+      const origem = new Map(cache.map((r) => [chave(r), r.pessoaOriginal ?? r.pessoa]));
 
       for (const r of cache) {
         if (novas.has(chave(r))) continue;
         const { error } = await cliente.from(TABELA).delete()
-          .eq("pessoa", r.pessoa).eq("mes", r.mes).eq("ano", r.ano);
+          .eq("pessoa", origem.get(chave(r)) ?? r.pessoa)
+          .eq("mes", r.mes).eq("ano", r.ano);
         if (error) throw error;
       }
-      for (const r of pagamentos) {
+      for (const r of uteis) {
         if (antigas.has(chave(r))) continue;
         const { error } = await cliente.from(TABELA).insert({
           pessoa: r.pessoa, mes: r.mes, ano: r.ano, pago: true
         });
         if (error) throw error;
       }
-      cache = [...pagamentos];
+      // Mantém o nome realmente gravado no banco (pode ser o legado, pré-migração).
+      cache = uteis.map((r) => ({
+        pessoa: r.pessoa,
+        pessoaOriginal: origem.get(chave(r)) ?? r.pessoa,
+        mes: r.mes,
+        ano: r.ano,
+        pago: true
+      }));
     }
   };
 })();

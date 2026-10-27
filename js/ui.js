@@ -1,6 +1,6 @@
 /** Camada de interface: renderização, eventos, microinterações e estado de acesso. */
 const UI = (() => {
-  const { pessoas, meses, mesesCurtos } = APP_CONFIG;
+  const { pessoas, ativos, meses, mesesCurtos } = APP_CONFIG;
   const reduzido = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const ANO = PaymentService.anoAtual;
   const CIRCUNFERENCIA = 2 * Math.PI * 66;
@@ -15,7 +15,7 @@ const UI = (() => {
     "rail", "railPrev", "railNext", "listaPessoas", "listaContagem",
     "resumoMes", "resumoAno", "ringFill", "barFill", "bar",
     "pctNum", "nPagos", "nPendentes", "resumoTexto",
-    "pillResumo", "anoGrande", "toast",
+    "pillResumo", "anoGrande", "grupoTag", "toast",
     "btnEntrar", "btnSair", "loginModal", "loginForm",
     "loginEmail", "loginSenha", "loginErro", "loginSubmit", "btnFecharLogin", "btnVerSenha"
   ];
@@ -24,11 +24,16 @@ const UI = (() => {
     `<svg class="ic ic-paga" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>`;
   const ICONE_RELOGIO =
     `<svg class="ic ic-pendente" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>`;
+  const ICONE_VAGA =
+    `<svg class="ic ic-vaga" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.2" r="3.3"/><path d="M5.6 19.2a6.4 6.4 0 0 1 12.8 0M4.2 4.2l15.6 15.6"/></svg>`;
+  const ICONE_VAGA_AVATAR =
+    `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.4" r="3.6"/><path d="M5 20a7 7 0 0 1 14 0M3.6 3.6l16.8 16.8"/></svg>`;
 
   /* ─────────── inicialização ─────────── */
   function iniciar() {
     REF_IDS.forEach((id) => { el[id] = document.getElementById(id); });
     el.anoGrande.textContent = ANO;
+    if (el.grupoTag) el.grupoTag.textContent = `Grupo de ${ativos.length}`;
     mesAtual = mesPreferido();
     construirChips();
     selecionarMes(mesAtual, { primeiraVez: true });
@@ -92,11 +97,29 @@ const UI = (() => {
     const frag = document.createDocumentFragment();
 
     pessoas.forEach((nome, i) => {
-      const pago = PaymentService.estaPago(mesAtual, nome);
+      const vaga = ehVaga(nome);
+      const pago = !vaga && PaymentService.estaPago(mesAtual, nome);
       const card = document.createElement("article");
-      card.className = "pessoa" + (pago ? " is-paga" : "");
+      card.className = "pessoa" + (pago ? " is-paga" : "") + (vaga ? " is-vaga" : "");
       card.dataset.pessoa = nome;
       card.style.setProperty("--i", i);
+
+      if (vaga) {
+        card.innerHTML = `
+        <span class="pessoa-num" aria-hidden="true">${String(i + 1).padStart(2, "0")}</span>
+        <div class="pessoa-avatar av-vaga" aria-hidden="true">${ICONE_VAGA_AVATAR}</div>
+        <div class="pessoa-info">
+          <h3>${nome}</h3>
+          <p class="pessoa-status">
+            ${ICONE_VAGA}
+            <span class="status-txt">Vaga sem mensalista</span>
+          </p>
+        </div>
+        <span class="vaga-selo mono" title="Não há ninguém nesta vaga" aria-hidden="true">vaga</span>`;
+        frag.appendChild(card);
+        return;
+      }
+
       card.innerHTML = `
         <span class="pessoa-num" aria-hidden="true">${String(i + 1).padStart(2, "0")}</span>
         <div class="pessoa-avatar" aria-hidden="true">
@@ -124,7 +147,7 @@ const UI = (() => {
     });
 
     el.listaPessoas.replaceChildren(frag);
-    el.listaContagem.textContent = `${pessoas.length} pessoas · ${meses[mesAtual]}`;
+    el.listaContagem.textContent = `${ativos.length} pessoas · ${meses[mesAtual]}`;
   }
 
   const rotuloSwitch = (nome, pago) =>
@@ -134,6 +157,8 @@ const UI = (() => {
 
   /* ─────────── alternância de pagamento ─────────── */
   async function alternar(nome, card) {
+    if (ehVaga(nome)) return; // vaga não tem pagamento
+
     if (!AuthService.ehAdmin()) {
       avisarBloqueio(card);
       return;
@@ -195,7 +220,7 @@ const UI = (() => {
 
   /* ─────────── resumo ─────────── */
   function atualizarResumo() {
-    const total = pessoas.length;
+    const total = ativos.length;
     const pagos = PaymentService.contagemPagos(mesAtual);
     const pendentes = total - pagos;
     const pct = Math.round((pagos / total) * 100);
@@ -235,7 +260,7 @@ const UI = (() => {
   }
 
   function atualizarDots() {
-    const total = pessoas.length;
+    const total = ativos.length;
     meses.forEach((_, i) => {
       const n = PaymentService.contagemPagos(i);
       chips[i].dataset.nivel = n === 0 ? "nenhum" : n === total ? "completo" : "parcial";
@@ -245,7 +270,7 @@ const UI = (() => {
   function atualizarPill() {
     const pagos = PaymentService.contagemPagos(mesAtual);
     el.pillResumo.innerHTML =
-      `${mesesCurtos[mesAtual]} · <b>${pagos}/${pessoas.length}</b> pagos`;
+      `${mesesCurtos[mesAtual]} · <b>${pagos}/${ativos.length}</b> pagos`;
   }
 
   /* ─────────── modo admin / visitante ─────────── */
