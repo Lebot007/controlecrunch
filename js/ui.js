@@ -63,9 +63,9 @@ const UI = (() => {
 
     if ((estado === "offline" || estado === "erro") && !avisoOfflineDado) {
       avisoOfflineDado = true;
-      mostrarToast(estado === "erro"
-        ? "Sem resposta do servidor. Mostrando a última informação salva."
-        : "Sem conexão: mostrando o último estado salvo.");
+      mostrarToast(PaymentService.carregado()
+        ? "Sem resposta do servidor: mostrando o último estado salvo."
+        : "Sem resposta do servidor: não foi possível carregar os pagamentos.");
     }
     if (estado === "online") avisoOfflineDado = false;
 
