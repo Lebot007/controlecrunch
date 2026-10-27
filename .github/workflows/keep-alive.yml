@@ -1,0 +1,73 @@
+name: keep-alive
+
+# ═══════════════════════════════════════════════════════════════════
+#  Mantém o projeto Supabase ACORDADO.
+#
+#  O plano Free pausa o projeto depois de ~7 dias sem atividade de
+#  banco/API. Este workflow faz uma leitura mínima (select ... limit 1)
+#  a cada 4 horas — folga de sobra em relação aos 7 dias.
+#
+#  Avisos importantes:
+#   • Cron do GitHub é em UTC e pode atrasar alguns minutos (ou, em
+#     picos de carga, pular uma execução). Com janela de 7 dias, ok.
+#   • O GitHub DESATIVA crons após 60 dias sem atividade no repositório;
+#     o último passo deste job cuida disso (commit mensal automático).
+#   • Repositório público = minutos de Actions ilimitados e gratuitos.
+# ═══════════════════════════════════════════════════════════════════
+
+on:
+  schedule:
+    - cron: '13 */4 * * *'      # 00:13, 04:13, 08:13, 12:13, 16:13, 20:13 UTC
+    - cron: '47 2,14 * * *'     # reforço deslocado, caso alguma execução seja pulada
+  workflow_dispatch: {}         # botão "Run workflow" para testar na hora
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/keep-alive.mjs'
+      - 'scripts/keepalive-repo.mjs'
+      - '.github/workflows/keep-alive.yml'
+
+permissions:
+  contents: write   # usado apenas pelo heartbeat mensal do repositório
+
+concurrency:
+  group: keep-alive-supabase
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    name: Ping no Supabase
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Código
+        uses: actions/checkout@v4
+
+      - name: Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Lê 1 registro do banco (gera atividade real)
+        env:
+          # Recomendado: crie estes secrets em Settings → Secrets and variables → Actions.
+          # Sem eles, o script usa os valores públicos que já estão em js/supabase-client.js.
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://nxkolopzwtbtnfbryfut.supabase.co' }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || 'sb_publishable_BEAyL4CwDIUE1S_IezxudA_GcR9CeZr' }}
+          SUPABASE_TABELA: pagamentos
+          KEEPALIVE_TENTATIVAS: '4'
+        run: node scripts/keep-alive.mjs
+
+      - name: Heartbeat do repositório (só no dia 1º; evita desativação em 60 dias)
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          DIA=$(date -u +%d)
+          if [ "$DIA" != "01" ] && [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+            echo "⏭️  Dia $DIA — o heartbeat do repositório só roda no dia 1º (ou manualmente)."
+            exit 0
+          fi
+          node scripts/keepalive-repo.mjs
