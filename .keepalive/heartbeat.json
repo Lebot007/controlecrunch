@@ -1,0 +1,4 @@
+{
+  "ultimoHeartbeat": "2026-10-27T11:57:38.034Z",
+  "motivo": "Commit automático mensal: mantém o workflow agendado ativo (o GitHub desativa crons após 60 dias sem atividade no repositório)."
+}
